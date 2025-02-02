@@ -1,4 +1,6 @@
+#![feature(generic_const_exprs)]
 mod wfc;
+use image::{ImageDecoder, ImageReader, RgbImage};
 use sdl2::event::WindowEvent;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
@@ -10,6 +12,7 @@ use std::{
     collections::VecDeque,
     time::{Duration, Instant},
 };
+use wfc::TileSet;
 
 struct App<'a> {
     canvas: sdl2::render::Canvas<sdl2::video::Window>,
@@ -127,6 +130,13 @@ impl<'a> App<'a> {
     }
 
     fn draw_scene(&mut self) {
+        let image: RgbImage = ImageReader::open("samples/city.png")
+            .unwrap()
+            .decode()
+            .unwrap()
+            .into_rgb8();
+        let tileset = TileSet::new(image);
+
         // Draw a red rectangle
         self.canvas.set_draw_color(Color::RED);
         let _ = self.canvas.fill_rect(Rect::new(0, 0, 100, 100));
