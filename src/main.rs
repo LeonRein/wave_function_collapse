@@ -1,6 +1,6 @@
 #![feature(generic_const_exprs)]
 mod wfc;
-use image::{ImageDecoder, ImageReader, RgbImage};
+use image::{ImageReader, RgbImage};
 use sdl2::event::WindowEvent;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
@@ -12,17 +12,22 @@ use std::{
     collections::VecDeque,
     time::{Duration, Instant},
 };
-use wfc::TileSet;
+use wfc::{Direction, TileSet};
 
 struct App<'a> {
     canvas: sdl2::render::Canvas<sdl2::video::Window>,
     texture_creator: TextureCreator<WindowContext>,
     event_pump: sdl2::EventPump,
     font: sdl2::ttf::Font<'a, 'a>,
+    n_frame: u32,
     last_frametime: Instant,
     frametime_buffer: VecDeque<f32>,
     last_fps_update: Instant,
+    tileset: TileSet<TILE_SIZE, TILE_SIZE>,
 }
+
+const SCALE: u32 = 30;
+const TILE_SIZE: usize = 3;
 
 impl<'a> App<'a> {
     fn new(sdl_context: &sdl2::Sdl, font: Font<'a, 'a>) -> Result<Self, String> {
@@ -33,18 +38,26 @@ impl<'a> App<'a> {
             .window("rust-sdl2 demo: Video", 800, 600)
             .position_centered()
             .resizable()
+            .vulkan()
             .build()
             .map_err(|e| e.to_string())?;
 
         // Create a canvas for rendering
-        let canvas = window.into_canvas().build().map_err(|e| e.to_string())?;
+        let canvas = window
+            .into_canvas()
+            .present_vsync()
+            .build()
+            .map_err(|e| e.to_string())?;
         let texture_creator = canvas.texture_creator();
 
         // Initialize the event pump
         let event_pump = sdl_context.event_pump()?;
 
-        // Initialize TTF context and load a font
-        // let font = ttf_context.load_font("/path/to/your/font.ttf", 16)?;
+        let image: RgbImage = ImageReader::open("samples/City.png")
+            .unwrap()
+            .decode()
+            .unwrap()
+            .into_rgb8();
 
         Ok(App {
             canvas,
@@ -54,6 +67,8 @@ impl<'a> App<'a> {
             last_frametime: Instant::now(),
             frametime_buffer: VecDeque::new(),
             last_fps_update: Instant::now(),
+            tileset: TileSet::new(&image),
+            n_frame: 0,
         })
     }
 
@@ -83,6 +98,7 @@ impl<'a> App<'a> {
     }
 
     fn display_fps(&mut self) -> Result<(), String> {
+        self.n_frame += 1;
         let now = Instant::now();
         let frametime = now.duration_since(self.last_frametime);
         self.last_frametime = now;
@@ -130,16 +146,19 @@ impl<'a> App<'a> {
     }
 
     fn draw_scene(&mut self) {
-        let image: RgbImage = ImageReader::open("samples/city.png")
-            .unwrap()
-            .decode()
-            .unwrap()
-            .into_rgb8();
-        let tileset = TileSet::new(image);
+        // tileset.draw(&mut self.canvas, image.dimensions().0 as usize, SCALE);
+        let index = (self.n_frame / 10) as usize % (self.tileset.len() * 4);
+        let direction = index / self.tileset.len();
+        let index = index % self.tileset.len();
 
-        // Draw a red rectangle
-        self.canvas.set_draw_color(Color::RED);
-        let _ = self.canvas.fill_rect(Rect::new(0, 0, 100, 100));
+        self.tileset.draw_neighbors(
+            &mut self.canvas,
+            index,
+            Direction::VALUES[direction],
+            9,
+            SCALE,
+        );
+        // let _ = self.canvas.fill_rect(Rect::new(0, 0, 100, 100));
     }
 
     fn present_canvas(&mut self) {
