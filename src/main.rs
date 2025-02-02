@@ -1,108 +1,65 @@
-use core::f32;
-use std::collections::VecDeque;
-use std::num::NonZeroU32;
-use std::rc::Rc;
-use std::time::{Duration, Instant};
+use sdl2::event::Event;
+use sdl2::keyboard::Keycode;
+use sdl2::pixels::Color;
+use std::{
+    collections::VecDeque,
+    time::{Duration, Instant},
+};
 
-use softbuffer::{Context, Surface};
-use winit::application::ApplicationHandler;
-use winit::event::WindowEvent;
-use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
-use winit::window::{Window, WindowId};
+pub fn main() -> Result<(), String> {
+    let sdl_context = sdl2::init()?;
+    let video_subsystem = sdl_context.video()?;
 
-struct AppData {
-    size: (u32, u32),
-    surface: Surface<Rc<Window>, Rc<Window>>,
-    window: Rc<Window>,
-}
+    let window = video_subsystem
+        .window("rust-sdl2 demo: Video", 800, 600)
+        .position_centered()
+        .resizable()
+        .vulkan()
+        .build()
+        .map_err(|e| e.to_string())?;
 
-struct App {
-    data: Option<AppData>,
-    last_frametime: Instant,
-    frametime_buffer: VecDeque<f32>,
-    n_frame: u32,
-    last_fps_update: Instant,
-}
+    let mut canvas = window.into_canvas().build().map_err(|e| e.to_string())?;
 
-impl App {
-    fn new() -> Self {
-        App {
-            data: None,
-            n_frame: 0,
-            last_frametime: Instant::now(),
-            frametime_buffer: VecDeque::new(),
-            last_fps_update: Instant::now(),
+    let mut last_frametime = Instant::now();
+    let mut frametime_buffer: VecDeque<f32> = VecDeque::new();
+    let mut last_fps_update = Instant::now();
+
+    canvas.set_draw_color(Color::RGB(255, 0, 0));
+    canvas.clear();
+    canvas.present();
+    let mut event_pump = sdl_context.event_pump()?;
+
+    'running: loop {
+        for event in event_pump.poll_iter() {
+            match event {
+                Event::Quit { .. }
+                | Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => break 'running,
+                _ => {}
+            }
         }
-    }
-}
 
-impl ApplicationHandler for App {
-    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        let window = Rc::new(
-            event_loop
-                .create_window(Window::default_attributes())
-                .unwrap(),
-        );
-        let context = Context::new(Rc::clone(&window)).unwrap();
-        let surface = softbuffer::Surface::new(&context, Rc::clone(&window)).unwrap();
-        self.data = Some(AppData {
-            surface,
-            window,
-            size: (0, 0),
-        });
-    }
+        let now = Instant::now();
+        let frametime = now.duration_since(last_frametime);
+        last_frametime = now;
 
-    fn window_event(&mut self, event_loop: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
-        let _ = id;
-        let Some(data) = &mut self.data else {
-            return;
-        };
-
-        match event {
-            WindowEvent::CloseRequested => {
-                println!("The close button was pressed; stopping");
-                event_loop.exit();
-            }
-            WindowEvent::Resized(size) => {
-                self.frametime_buffer.clear();
-                let _ = data.surface.resize(
-                    NonZeroU32::new(size.width).unwrap(),
-                    NonZeroU32::new(size.height).unwrap(),
-                );
-                data.size = (size.width, size.height);
-            }
-            WindowEvent::RedrawRequested => {
-                data.window.request_redraw();
-                self.n_frame += 1;
-                let now = Instant::now();
-                let frametime = now.duration_since(self.last_frametime);
-                self.last_frametime = now;
-
-                if self.frametime_buffer.len() > 100 {
-                    self.frametime_buffer.pop_back();
-                }
-                self.frametime_buffer.push_front(frametime.as_secs_f32());
-                let frametime_avg =
-                    self.frametime_buffer.iter().sum::<f32>() / self.frametime_buffer.len() as f32;
-
-                if self.last_fps_update.elapsed() >= Duration::from_secs(1) {
-                    println!("FPS: {:.2}", 1.0 / frametime_avg);
-                    self.last_fps_update = now;
-                }
-
-                let mut pixel_buffer = data.surface.buffer_mut().unwrap();
-                pixel_buffer.fill(0x00FF0000);
-                pixel_buffer.present().unwrap();
-            }
-            _ => (),
+        if frametime_buffer.len() > 100 {
+            frametime_buffer.pop_back();
         }
+        frametime_buffer.push_front(frametime.as_secs_f32() * 1000.0);
+        let frametime_avg = frametime_buffer.iter().sum::<f32>() / frametime_buffer.len() as f32;
+
+        if last_fps_update.elapsed() >= Duration::from_secs(1) {
+            println!("FPS: {:.2}", 1000.0 / frametime_avg);
+            last_fps_update = now;
+        }
+
+        canvas.clear();
+        canvas.present();
+        // The rest of the game loop goes here...
     }
-}
 
-pub fn main() {
-    let event_loop = EventLoop::new().unwrap();
-    event_loop.set_control_flow(ControlFlow::Poll);
-
-    let mut app = App::new();
-    let _ = event_loop.run_app(&mut app);
+    Ok(())
 }
