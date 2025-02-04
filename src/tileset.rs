@@ -98,6 +98,10 @@ where
         self.tiles.len()
     }
 
+    pub fn get_tiles(self) -> Vec<Tile<TILE_WIDTH, TILE_HEIGHT>> {
+        self.tiles
+    }
+
     pub fn draw(&self, canvas: &mut Canvas<Window>, width: usize, scale: u32) {
         for (index, tile) in self.tiles.iter().enumerate() {
             let x = (index % width) as i32 * (scale + 3) as i32 * TILE_WIDTH as i32;
@@ -130,7 +134,7 @@ where
     }
 }
 
-struct Tile<const WIDTH: usize, const HEIGHT: usize>
+pub(crate) struct Tile<const WIDTH: usize, const HEIGHT: usize>
 where
     [(); WIDTH * HEIGHT]:,
 {

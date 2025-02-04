@@ -1,5 +1,8 @@
-#![feature(generic_const_exprs)]
-mod wfc;
+#![feature(generic_const_exprs, get_many_mut)]
+mod grid;
+mod tileset;
+use core::panic;
+use grid::Grid;
 use image::{ImageReader, RgbImage};
 use sdl2::event::WindowEvent;
 use sdl2::keyboard::Keycode;
@@ -12,7 +15,7 @@ use std::{
     collections::VecDeque,
     time::{Duration, Instant},
 };
-use wfc::{Direction, TileSet};
+use tileset::{Direction, TileSet};
 
 struct App<'a> {
     canvas: sdl2::render::Canvas<sdl2::video::Window>,
@@ -23,7 +26,7 @@ struct App<'a> {
     last_frametime: Instant,
     frametime_buffer: VecDeque<f32>,
     last_fps_update: Instant,
-    tileset: TileSet<TILE_SIZE, TILE_SIZE>,
+    tileset: Option<TileSet<TILE_SIZE, TILE_SIZE>>,
 }
 
 const SCALE: u32 = 30;
@@ -67,7 +70,7 @@ impl<'a> App<'a> {
             last_frametime: Instant::now(),
             frametime_buffer: VecDeque::new(),
             last_fps_update: Instant::now(),
-            tileset: TileSet::new(&image),
+            tileset: Some(TileSet::new(&image)),
             n_frame: 0,
         })
     }
@@ -146,18 +149,27 @@ impl<'a> App<'a> {
     }
 
     fn draw_scene(&mut self) {
+        let Some(tileset) = &self.tileset else {
+            return;
+        };
         // tileset.draw(&mut self.canvas, image.dimensions().0 as usize, SCALE);
-        let index = (self.n_frame / 10) as usize % (self.tileset.len() * 4);
-        let direction = index / self.tileset.len();
-        let index = index % self.tileset.len();
+        let index = (self.n_frame / 10) as usize % (tileset.len() * 4);
+        let direction = index / tileset.len();
+        let index = index % tileset.len();
 
-        self.tileset.draw_neighbors(
+        tileset.draw_neighbors(
             &mut self.canvas,
             index,
             Direction::VALUES[direction],
             9,
             SCALE,
         );
+
+        let tileset = self.tileset.take().unwrap();
+        let mut grid = Grid::new::<40, 20>(tileset);
+        grid.collapse_step();
+        panic!();
+
         // let _ = self.canvas.fill_rect(Rect::new(0, 0, 100, 100));
     }
 
