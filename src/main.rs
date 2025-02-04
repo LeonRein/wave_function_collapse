@@ -17,6 +17,11 @@ use std::{
 };
 use tileset::TileSet;
 
+const SCALE: u32 = 10;
+const TILE_SIZE: usize = 3;
+const GRID_HEIGHT: usize = 20;
+const GRID_WIDTH: usize = 40;
+
 struct App<'a> {
     canvas: Canvas<sdl2::video::Window>,
     texture_creator: TextureCreator<WindowContext>,
@@ -26,11 +31,9 @@ struct App<'a> {
     last_frametime: Instant,
     frametime_buffer: VecDeque<f32>,
     last_fps_update: Instant,
-    grid: Grid<TILE_SIZE, TILE_SIZE, 20, 10>,
+    grid: Grid<TILE_SIZE, TILE_SIZE, GRID_WIDTH, GRID_HEIGHT>,
 }
 
-const SCALE: u32 = 20;
-const TILE_SIZE: usize = 3;
 
 impl<'a> App<'a> {
     fn new(sdl_context: &sdl2::Sdl, font: Font<'a, 'a>) -> Result<Self, String> {
