@@ -1,13 +1,13 @@
 #![feature(generic_const_exprs, get_many_mut)]
+
 mod grid;
 mod tileset;
-use core::panic;
 use grid::Grid;
 use image::{ImageReader, RgbImage};
 use sdl2::event::WindowEvent;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
-use sdl2::render::TextureCreator;
+use sdl2::render::{Canvas, TextureCreator};
 use sdl2::ttf::Font;
 use sdl2::video::WindowContext;
 use sdl2::{event::Event, rect::Rect};
@@ -15,21 +15,21 @@ use std::{
     collections::VecDeque,
     time::{Duration, Instant},
 };
-use tileset::{Direction, TileSet};
+use tileset::TileSet;
 
 struct App<'a> {
-    canvas: sdl2::render::Canvas<sdl2::video::Window>,
+    canvas: Canvas<sdl2::video::Window>,
     texture_creator: TextureCreator<WindowContext>,
     event_pump: sdl2::EventPump,
-    font: sdl2::ttf::Font<'a, 'a>,
+    font: Font<'a, 'a>,
     n_frame: u32,
     last_frametime: Instant,
     frametime_buffer: VecDeque<f32>,
     last_fps_update: Instant,
-    tileset: Option<TileSet<TILE_SIZE, TILE_SIZE>>,
+    grid: Grid<TILE_SIZE, TILE_SIZE, 20, 10>,
 }
 
-const SCALE: u32 = 30;
+const SCALE: u32 = 20;
 const TILE_SIZE: usize = 3;
 
 impl<'a> App<'a> {
@@ -70,7 +70,7 @@ impl<'a> App<'a> {
             last_frametime: Instant::now(),
             frametime_buffer: VecDeque::new(),
             last_fps_update: Instant::now(),
-            tileset: Some(TileSet::new(&image)),
+            grid: Grid::new(TileSet::new(&image)),
             n_frame: 0,
         })
     }
@@ -83,6 +83,11 @@ impl<'a> App<'a> {
                     keycode: Some(Keycode::Escape),
                     ..
                 } => return false,
+
+                Event::KeyDown {
+                    keycode: Some(Keycode::SPACE),
+                    ..
+                } => self.grid.collapse_step(),
 
                 // Handle window resize events
                 Event::Window {
@@ -149,27 +154,23 @@ impl<'a> App<'a> {
     }
 
     fn draw_scene(&mut self) {
-        let Some(tileset) = &self.tileset else {
-            return;
-        };
-        // tileset.draw(&mut self.canvas, image.dimensions().0 as usize, SCALE);
-        let index = (self.n_frame / 10) as usize % (tileset.len() * 4);
-        let direction = index / tileset.len();
-        let index = index % tileset.len();
+        let grid = &mut self.grid;
+        // let tileset = &grid.tileset;
+        // tileset.draw(&mut self.canvas, 9, SCALE);
+        // let index = (self.n_frame / 10) as usize % (tileset.len() * 4);
+        // let direction = index / tileset.len();
+        // let index = index % tileset.len();
 
-        tileset.draw_neighbors(
-            &mut self.canvas,
-            index,
-            Direction::VALUES[direction],
-            9,
-            SCALE,
-        );
+        // tileset.draw_neighbors(
+        //     &mut self.canvas,
+        //     index,
+        //     Direction::VALUES[direction],
+        //     9,
+        //     SCALE,
+        // );
 
-        let tileset = self.tileset.take().unwrap();
-        let mut grid = Grid::new::<40, 20>(tileset);
-        grid.collapse_step();
-        panic!();
-
+        grid.draw(&mut self.canvas, &self.texture_creator, &self.font, SCALE);
+        // grid.collapse_step();
         // let _ = self.canvas.fill_rect(Rect::new(0, 0, 100, 100));
     }
 
@@ -202,7 +203,7 @@ impl<'a> App<'a> {
     }
 }
 
-pub fn main() -> Result<(), String> {
+pub(crate) fn main() -> Result<(), String> {
     // Initialize SDL2
     let sdl_context = sdl2::init()?;
     let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string())?;

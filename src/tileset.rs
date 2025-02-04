@@ -86,7 +86,7 @@ where
                 let tile_b = Tile::new(tile_b);
                 let tile_a = &mut self.tiles[ia];
                 for direction in Direction::VALUES {
-                    if tile_a.cmp_adjacent(&tile_b, direction.clone()) {
+                    if tile_a.cmp_adjacent(&tile_b, direction) {
                         tile_a.neighbors[direction as usize].insert(ib);
                     }
                 }
@@ -94,14 +94,17 @@ where
         }
     }
 
+    #[inline(always)]
     pub fn len(&self) -> usize {
         self.tiles.len()
     }
 
-    pub fn get_tiles(self) -> Vec<Tile<TILE_WIDTH, TILE_HEIGHT>> {
-        self.tiles
+    #[inline(always)]
+    pub fn get_tile(&self, index: usize) -> &Tile<TILE_WIDTH, TILE_HEIGHT> {
+        &self.tiles[index]
     }
 
+    #[allow(dead_code)]
     pub fn draw(&self, canvas: &mut Canvas<Window>, width: usize, scale: u32) {
         for (index, tile) in self.tiles.iter().enumerate() {
             let x = (index % width) as i32 * (scale + 3) as i32 * TILE_WIDTH as i32;
@@ -124,7 +127,7 @@ where
         for ix in tile.neighbors[direction as usize].iter() {
             tiles.push(&self.tiles[ix]);
         }
-        let x_offset = scale as i32 * TILE_WIDTH as i32 + 30 as i32;
+        let x_offset = scale as i32 * TILE_WIDTH as i32 + 30;
         let y_offset = 0;
         for (index, &tile) in tiles.iter().enumerate() {
             let x = (index % width) as i32 * (scale + 3) as i32 * TILE_WIDTH as i32 + x_offset;
@@ -140,7 +143,7 @@ where
 {
     pixels: [u32; WIDTH * HEIGHT],
     neighbors: [BitSet<usize>; 4],
-    frequency: u32,
+    // frequency: u32,
 }
 
 impl<const WIDTH: usize, const HEIGHT: usize> Tile<WIDTH, HEIGHT>
@@ -151,13 +154,13 @@ where
         Self {
             pixels: pixels.try_into().unwrap(),
             neighbors: from_fn(|_| BitSet::new()),
-            frequency: 1,
+            // frequency: 1,
         }
     }
 
     fn adjacent_north(&self, other: &Self) -> bool {
         for xa in 0..WIDTH {
-            for ya in 0..HEIGHT - 1 {
+            for ya in 0..(HEIGHT - 1) {
                 let xb = xa;
                 let yb = ya + 1;
                 let ia = xa + ya * WIDTH;
@@ -167,7 +170,7 @@ where
                 }
             }
         }
-        return true;
+        true
     }
 
     fn adjacent_south(&self, other: &Self) -> bool {
@@ -182,10 +185,10 @@ where
                 }
             }
         }
-        return true;
+        true
     }
 
-    fn ajacetn_east(&self, other: &Self) -> bool {
+    fn adjacent_east(&self, other: &Self) -> bool {
         for xa in 1..WIDTH {
             for ya in 0..HEIGHT {
                 let xb = xa - 1;
@@ -197,11 +200,11 @@ where
                 }
             }
         }
-        return true;
+        true
     }
 
     fn adjacent_west(&self, other: &Self) -> bool {
-        for xa in 0..WIDTH - 1 {
+        for xa in 0..(WIDTH - 1) {
             for ya in 0..HEIGHT {
                 let xb = xa + 1;
                 let yb = ya;
@@ -212,18 +215,24 @@ where
                 }
             }
         }
-        return true;
+        true
     }
 
     fn cmp_adjacent(&self, other: &Self, direction: Direction) -> bool {
         match direction {
             Direction::North => self.adjacent_north(other),
-            Direction::East => self.ajacetn_east(other),
+            Direction::East => self.adjacent_east(other),
             Direction::South => self.adjacent_south(other),
             Direction::West => self.adjacent_west(other),
         }
     }
-    fn draw(&self, canvas: &mut Canvas<Window>, x: i32, y: i32, scale: u32) {
+
+    #[inline(always)]
+    pub(crate) fn get_neighbors(&self, direction: Direction) -> &BitSet {
+        &self.neighbors[direction as usize]
+    }
+
+    pub(crate) fn draw(&self, canvas: &mut Canvas<Window>, x: i32, y: i32, scale: u32) {
         for tile_x in 0..WIDTH {
             for tile_y in 0..HEIGHT {
                 let color = self.pixels[tile_x + tile_y * WIDTH];
@@ -237,6 +246,11 @@ where
                 let _ = canvas.draw_rect(rect);
             }
         }
+    }
+    
+    pub(crate) fn get_color(&self) -> Color  {
+        let color = self.pixels[const {WIDTH / 2}];
+        Color::from_u32(&PixelFormatEnum::RGBA32.try_into().unwrap(), color)
     }
 }
 
