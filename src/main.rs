@@ -17,10 +17,10 @@ use std::{
 };
 use tileset::TileSet;
 
-const SCALE: u32 = 10;
+const SCALE: u32 = 30;
 const TILE_SIZE: usize = 3;
-const GRID_HEIGHT: usize = 20;
-const GRID_WIDTH: usize = 40;
+const GRID_HEIGHT: usize = 30;
+const GRID_WIDTH: usize = 50;
 
 struct App<'a> {
     canvas: Canvas<sdl2::video::Window>,
@@ -33,7 +33,6 @@ struct App<'a> {
     last_fps_update: Instant,
     grid: Grid<TILE_SIZE, TILE_SIZE, GRID_WIDTH, GRID_HEIGHT>,
 }
-
 
 impl<'a> App<'a> {
     fn new(sdl_context: &sdl2::Sdl, font: Font<'a, 'a>) -> Result<Self, String> {
@@ -51,7 +50,7 @@ impl<'a> App<'a> {
         // Create a canvas for rendering
         let canvas = window
             .into_canvas()
-            .present_vsync()
+            // .present_vsync()
             .build()
             .map_err(|e| e.to_string())?;
         let texture_creator = canvas.texture_creator();
@@ -59,7 +58,8 @@ impl<'a> App<'a> {
         // Initialize the event pump
         let event_pump = sdl_context.event_pump()?;
 
-        let image: RgbImage = ImageReader::open("samples/City.png")
+        // let image: RgbImage = ImageReader::open("samples/City.png")
+        let image: RgbImage = ImageReader::open("samples/Lake.png")
             .unwrap()
             .decode()
             .unwrap()
@@ -173,7 +173,9 @@ impl<'a> App<'a> {
         // );
 
         grid.draw(&mut self.canvas, &self.texture_creator, &self.font, SCALE);
-        // grid.collapse_step();
+        for _ in 0..100 {
+            grid.collapse_step();
+        }
         // let _ = self.canvas.fill_rect(Rect::new(0, 0, 100, 100));
     }
 

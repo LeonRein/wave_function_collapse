@@ -69,9 +69,9 @@ where
             return;
         };
         let min_cell = &mut self.grid[min_cell_ix];
-        if min_cell.final_tile.is_some() {
-            println!("DBG");
-        }
+        // if min_cell.final_tile.is_some() {
+        //     println!("DBG");
+        // }
         let options: Vec<usize> = min_cell.options.iter().collect();
         // let Some(&option) = options.first() else {
         //     println!("ERROR: no options for cell {}", min_cell_ix);
@@ -93,16 +93,20 @@ where
         let mut to_update = VecDeque::new();
         to_update.push_back(index);
         while let Some(cell_ix) = to_update.pop_front() {
-            println!("to_update.len() = {}", to_update.len());
+            // println!("to_update.len() = {}", to_update.len());
             for direction in Direction::VALUES {
                 let neighbor_ix = self.get_neighbor(cell_ix, direction);
-                println!("### cell_ix = {}, neighbor_ix = {}", cell_ix, neighbor_ix);
+                // println!("### cell_ix = {}, neighbor_ix = {}", cell_ix, neighbor_ix);
                 let [cell, neighbor] = self.grid.get_many_mut([cell_ix, neighbor_ix]).unwrap();
-                if neighbor.final_tile.is_some() {
+                if neighbor.options.len() <= 1 {
                     continue;
                 }
-                println!("cell.options = {:?}, {}", cell.options, cell.options.len());
-                println!("neighbor.options = {:?}, {}", neighbor.options, neighbor.options.len());
+                // println!("cell.options = {:?}, {}", cell.options, cell.options.len());
+                // println!(
+                // "neighbor.options = {:?}, {}",
+                // neighbor.options,
+                // neighbor.options.len()
+                // );
                 let mut tile_neighbor_options_iter = cell
                     .options
                     .iter()
@@ -114,18 +118,22 @@ where
                 // println!("tile_neighbor_options = {:?}", tile_neighbor_options);
                 tile_neighbor_options =
                     tile_neighbor_options_iter.fold(tile_neighbor_options, |acc, e| acc.union(e));
-                println!("tile_neighbor_options = {:?}, {}", tile_neighbor_options, tile_neighbor_options.len());
-                if (neighbor_ix == 13) {
-                    println!("DBG");
-                }
-                if tile_neighbor_options.is_proper_subset(&neighbor.options) {
-                    println!("neighbor.options = {:?}", neighbor.options);
+                // println!(
+                // "tile_neighbor_options = {:?}, {}",
+                // tile_neighbor_options,
+                // tile_neighbor_options.len()
+                // );
+                // if neighbor_ix == 13 {
+                // println!("DBG");
+                // }
+                let intersect = BitSet::intersection(&tile_neighbor_options, &neighbor.options);
+                if neighbor.options != intersect {
+                    neighbor.options = intersect;
+                    // println!("neighbor.options = {:?}", neighbor.options);
                     if !to_update.contains(&neighbor_ix) {
                         to_update.push_front(neighbor_ix);
                     }
                 }
-                neighbor.options =
-                        BitSet::intersection(&neighbor.options, &tile_neighbor_options);
             }
         }
     }
@@ -162,20 +170,20 @@ where
         scale: u32,
     ) {
         for (index, cell) in self.grid.iter().enumerate() {
-            let x = (index % WIDTH) as i32 * (scale + 3) as i32 * TILE_WIDTH as i32;
-            let y = (index / WIDTH) as i32 * (scale + 3) as i32 * TILE_HEIGHT as i32;
-            let rect = Rect::new(x, y, TILE_WIDTH as u32 * scale, TILE_HEIGHT as u32 * scale);
+            let x = (index % WIDTH) as i32 * scale as i32;
+            let y = (index / WIDTH) as i32 * scale as i32;
+            let rect = Rect::new(x, y, scale, scale);
 
             if let Some(tile_i) = cell.final_tile {
                 let tile = self.tileset.get_tile(tile_i);
                 // tile.draw(canvas, x, y, scale);
                 canvas.set_draw_color(tile.get_color());
-                canvas.fill_rect(rect);
+                let _ = canvas.fill_rect(rect);
             } else {
                 canvas.set_draw_color(Color::MAGENTA);
                 let _ = canvas.draw_rect(rect);
                 let text = format!("{}", cell.options.len());
-                Self::write_text(canvas, texture_creator, font, &text, rect);
+                Self::write_text(canvas, texture_creator, font, &text, x, y);
             }
         }
     }
@@ -185,13 +193,20 @@ where
         texture_creator: &TextureCreator<WindowContext>,
         font: &Font,
         text: &str,
-        rect: Rect,
+        x: i32,
+        y: i32,
     ) {
         let surface = font.render(text).blended(Color::WHITE).unwrap();
         let texture = texture_creator
             .create_texture_from_surface(&surface)
             .unwrap();
-        canvas.copy(&texture, None, Some(rect)).unwrap();
+        canvas
+            .copy(
+                &texture,
+                None,
+                Some(Rect::new(x, y, surface.width(), surface.height())),
+            )
+            .unwrap();
     }
 }
 

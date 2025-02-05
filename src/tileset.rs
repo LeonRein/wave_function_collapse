@@ -46,29 +46,29 @@ where
         assert!(width - TILE_WIDTH > 0);
         assert!(height - TILE_HEIGHT > 0);
         let mut tiles: Vec<Tile<TILE_WIDTH, TILE_HEIGHT>> = Vec::new();
-        for x in 0..width {
-            for y in 0..height {
+        for y in 0..height {
+            for x in 0..width {
                 let mut pixels = Vec::new();
-                for dx in 0..TILE_WIDTH {
-                    for dy in 0..TILE_HEIGHT {
+                for dy in 0..TILE_HEIGHT {
+                    for dx in 0..TILE_WIDTH {
                         let x = (x + dx) % width;
                         let y = (y + dy) % height;
                         let index = x + y * width;
                         pixels.push(image[index]);
                     }
                 }
-                // let exists = tiles
-                //     .iter_mut()
-                //     .find_map(|tile| {
-                //         if tile.pixels == pixels.as_slice() {
-                //             tile.frequency += 1;
-                //             Some(())
-                //         } else {
-                //             None
-                //         }
-                //     })
-                //     .is_some();
-                let exists = false;
+                let exists = tiles
+                    .iter_mut()
+                    .find_map(|tile| {
+                        if tile.pixels == pixels.as_slice() {
+                            // tile.frequency += 1;
+                            Some(())
+                        } else {
+                            None
+                        }
+                    })
+                    .is_some();
+                // let exists = false;
                 if !exists {
                     tiles.push(Tile::new(pixels));
                 }
@@ -247,9 +247,9 @@ where
             }
         }
     }
-    
-    pub(crate) fn get_color(&self) -> Color  {
-        let color = self.pixels[const {WIDTH / 2}];
+
+    pub(crate) fn get_color(&self) -> Color {
+        let color = self.pixels[const { WIDTH / 2 }];
         Color::from_u32(&PixelFormatEnum::RGBA32.try_into().unwrap(), color)
     }
 }
